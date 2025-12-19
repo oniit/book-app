@@ -1,7 +1,7 @@
 {
-  "name": "booking-app",
+  "name": "e-jadwal-app",
   "version": "1.0.0",
-  "description": "Aplikasi Peminjaman Gedung dan Kendaraan",
+  "description": "Aplikasi Jadwal Peminjaman Gedung dan Kendaraan",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

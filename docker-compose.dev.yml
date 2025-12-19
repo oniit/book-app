@@ -1,0 +1,61 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: e-jadwal_app_dev
+    command: npm run dev
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGO_URI=mongodb://db:27017/e-jadwal
+      - PORT=3000
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - e-jadwal-network
+
+  db:
+    image: mongo:6
+    container_name: e-jadwal_db_dev
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - e-jadwal-network
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'db.runCommand(\"ping\").ok' | mongosh localhost:27017/test --quiet"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  mongo-express:
+    image: mongo-express
+    container_name: e-jadwal_mexpress_dev
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=db
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=password
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - e-jadwal-network
+
+networks:
+  e-jadwal-network:
+    driver: bridge
+
+volumes:
+  mongo-data:

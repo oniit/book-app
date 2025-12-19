@@ -1,4 +1,5 @@
-document.addEventListener('DOMContentLoaded', function() {
+// Function to initialize the app
+function initializeApp() {
     // --- STATE APLIKASI ---
     const state = {
         assets: {},
@@ -73,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
             tableBody.innerHTML = '';
             const sortedBookings = [...bookings].sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
             if (sortedBookings.length === 0) {
-                const colspan = type === 'gedung' ? 5 : 6;
+                const colspan = type === 'gedung' ? 7 : 8;
                 tableBody.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-4 text-gray-500">Tidak ada data untuk filter ini.</td></tr>`;
                 return;
             }
@@ -85,13 +86,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (startDate.toDateString() !== endDate.toDateString()) {
                     tanggal += ` - ${endDate.toLocaleDateString('id-ID')}`;
                 }
+                const createdDate = b.createdAt ? new Date(b.createdAt).toLocaleDateString('id-ID') : '-';
                 if (type === 'gedung') {
                     return `
                         <tr class="table-row" data-booking-id="${b._id}">
+                            <td class="${cellClass}">${createdDate}</td>
                             <td class="${cellClass} font-medium text-gray-900">${b.assetName}</td>
                             <td class="${cellClass}">${b.userName}</td>
                             <td class="${cellClass}">${tanggal}</td>
                             <td class="${cellClass}">${b.borrowedItems || '-'}</td>
+                            <td class="${cellClass}">${b.notes || '-'}</td>
                             <td class="${cellClass} text-right">
                                 <button><i class="fas fa-edit btn btn-edit" data-id="${b._id}"></i></button>
                                 <button><i class="fas fa-trash btn btn-delete" data-id="${b._id}"></i></button>
@@ -101,6 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     return `
                         <tr class="table-row" data-booking-id="${b._id}">
+                            <td class="${cellClass}">${createdDate}</td>
                             <td class="${cellClass} font-medium text-gray-900">${b.assetName}</td>
                             <td class="${cellClass}">${b.userName}</td>
                             <td class="${cellClass}">${tanggal}</td>
@@ -218,9 +223,10 @@ document.addEventListener('DOMContentLoaded', function() {
         showDetailModal: function(props, context = 'admin') {
             let assetDisplay = props.assetName;
             if (props.bookingType === 'kendaraan') {
-                const kendaraan = state.assets.kendaraan.find(k => k.nama === props.assetName);
-                const detail = kendaraan && kendaraan.detail ? kendaraan.detail : '';
-                assetDisplay = detail ? `${props.assetName} (${detail})` : props.assetName;
+                // const kendaraan = state.assets.kendaraan.find(k => k.nama === props.assetName);
+                // const detail = kendaraan && kendaraan.detail ? kendaraan.detail : '';
+                // assetDisplay = detail ? `${props.assetName} (${detail})` : props.assetName;
+                assetDisplay = props.assetName;
             }
             elements.modalTitle.innerText = `${assetDisplay}`;
             const start = new Date(props.startDate);
@@ -265,42 +271,51 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // --- INISIALISASI KALENDER ---
-    const calendar = new FullCalendar.Calendar(elements.calendarEl, {
-        initialView: window.innerWidth < 768 ? 'listWeek' : 'dayGridMonth',
-        locale: 'id', 
-        dayMaxEvents: true,
-        headerToolbar: { 
-            left: 'prev,next,today', 
-            center: 'title', 
-            right: 'dayGridMonth,timeGridDay,listWeek' 
-        },
-        views: {
-            dayGridMonth: {
-                titleFormat: { year: 'numeric', month: 'long' }
+    let calendar = null;
+    
+    function initCalendar() {
+        if (!elements.calendarEl) {
+            console.warn('Calendar element not found, calendar will not be initialized');
+            return null;
+        }
+        
+        return new FullCalendar.Calendar(elements.calendarEl, {
+            initialView: window.innerWidth < 768 ? 'listWeek' : 'dayGridMonth',
+            locale: 'id', 
+            dayMaxEvents: true,
+            headerToolbar: { 
+                left: 'prev,next,today', 
+                center: 'title', 
+                right: 'dayGridMonth,timeGridDay,listWeek' 
             },
-            listWeek: {
-                titleFormat: { day: '2-digit', month: 'long', year: 'numeric' }
-            }
-        },
-        buttonText: {
-            today: 'today',
-            month: 'month',
-            day: 'day',
-            list: 'list'
-        },
-        height: 'auto',
-        events: (fetchInfo, successCallback) => {
-            let filtered = state.allBookingsCache.filter(b => b.bookingType === state.currentCalendarView);
-            if (state.selectedAssetFilter !== 'all') {
-                filtered = filtered.filter(b => b.assetCode === state.selectedAssetFilter);
-            }
-            successCallback(filtered.map(ui.formatBookingForCalendar));
-        },
-        eventClick: (info) => ui.showDetailModal(info.event.extendedProps, 'public'),
-        eventContent: (arg) => ({ 
-            html: `<div class="p-1"><b>${arg.event.extendedProps.bookingType === 'gedung' ? '🏢' : '🚗'} ${arg.event.title}</b></div>` 
-        })
-    });
+            views: {
+                dayGridMonth: {
+                    titleFormat: { year: 'numeric', month: 'long' }
+                },
+                listWeek: {
+                    titleFormat: { day: '2-digit', month: 'long', year: 'numeric' }
+                }
+            },
+            buttonText: {
+                today: 'today',
+                month: 'month',
+                day: 'day',
+                list: 'list'
+            },
+            height: 'auto',
+            events: (fetchInfo, successCallback) => {
+                let filtered = state.allBookingsCache.filter(b => b.bookingType === state.currentCalendarView);
+                if (state.selectedAssetFilter !== 'all') {
+                    filtered = filtered.filter(b => b.assetCode === state.selectedAssetFilter);
+                }
+                successCallback(filtered.map(ui.formatBookingForCalendar));
+            },
+            eventClick: (info) => ui.showDetailModal(info.event.extendedProps, 'public'),
+            eventContent: (arg) => ({ 
+                html: `<div class="p-1"><b>${arg.event.extendedProps.bookingType === 'gedung' ? '🏢' : '🚗'} ${arg.event.title}</b></div>` 
+            })
+        });
+    }
 
     // --- FUNGSI UTAMA ---
     function updateAvailableAssets(type) {
@@ -353,21 +368,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function refreshDataAndUI(force = false) {
         state.allBookingsCache = await api.fetchAllBookings();
-        calendar.refetchEvents();
-        applyAdminFilters('gedung');
-        applyAdminFilters('kendaraan');
+        if (calendar && calendar.refetchEvents) {
+            calendar.refetchEvents();
+        }
+        if (elements.filtersGedung) {
+            applyAdminFilters('gedung');
+        }
+        if (elements.filtersKendaraan) {
+            applyAdminFilters('kendaraan');
+        }
         
-        // Initialize sorting after data is refreshed
-        initTableSorting();
+        // Initialize sorting after data is refreshed (only if tables exist)
+        if (elements.gedungListTable || elements.kendaraanListTable) {
+            initTableSorting();
+        }
     }
 
     function applyAdminFilters(type) {
         const filterPanel = elements[type === 'gedung' ? 'filtersGedung' : 'filtersKendaraan'];
-        const start = filterPanel.querySelector(`#filter-${type}-start`).value;
-        const end = filterPanel.querySelector(`#filter-${type}-end`).value;
-        const asset = filterPanel.querySelector(`#filter-${type}-asset`).value;
-        const searchQuery = filterPanel.querySelector(`#filter-${type}-search`).value.trim().toLowerCase();
-        const driver = (type === 'kendaraan') ? filterPanel.querySelector(`#filter-${type}-driver`).value : null;
+        if (!filterPanel) return;
+        
+        const startInput = filterPanel.querySelector(`#filter-${type}-start`);
+        const endInput = filterPanel.querySelector(`#filter-${type}-end`);
+        const assetInput = filterPanel.querySelector(`#filter-${type}-asset`);
+        const searchInput = filterPanel.querySelector(`#filter-${type}-search`);
+        const driverInput = (type === 'kendaraan') ? filterPanel.querySelector(`#filter-${type}-driver`) : null;
+        
+        const start = startInput ? startInput.value : '';
+        const end = endInput ? endInput.value : '';
+        const asset = assetInput ? assetInput.value : 'all';
+        const searchQuery = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        const driver = driverInput ? driverInput.value : null;
         
         const bookingsToFilter = filterData(state.allBookingsCache, { type, start, end, asset, driver, searchQuery });
         ui.renderBookingList(type, bookingsToFilter);
@@ -572,33 +603,57 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function switchMainTab(tabName) {
-        elements.contentKalender.classList.toggle('hidden', tabName !== 'kalender');
-        elements.contentAdmin.classList.toggle('hidden', tabName !== 'admin');
-        elements.tabKalender.classList.toggle('active', tabName === 'kalender');
-        elements.tabAdmin.classList.toggle('active', tabName === 'admin');
+        if (elements.contentKalender) {
+            elements.contentKalender.classList.toggle('hidden', tabName !== 'kalender');
+        }
+        if (elements.contentAdmin) {
+            elements.contentAdmin.classList.toggle('hidden', tabName !== 'admin');
+        }
+        if (elements.tabKalender) {
+            elements.tabKalender.classList.toggle('active', tabName === 'kalender');
+        }
+        if (elements.tabAdmin) {
+            elements.tabAdmin.classList.toggle('active', tabName === 'admin');
+        }
         if (tabName === 'admin') {
-            applyAdminFilters('gedung');
-            applyAdminFilters('kendaraan');
-            switchAdminTab('gedung');
-        } else if (tabName === 'kalender') {
+            if (elements.filtersGedung) applyAdminFilters('gedung');
+            if (elements.filtersKendaraan) applyAdminFilters('kendaraan');
+            if (elements.adminTabGedung) switchAdminTab('gedung');
+        } else if (tabName === 'kalender' && calendar && calendar.updateSize) {
             setTimeout(() => calendar.updateSize(), 1);
         }
     }
 
     function switchAdminTab(tabName) {
-        elements.adminContentGedung.classList.toggle('hidden', tabName !== 'gedung');
-        elements.adminContentKendaraan.classList.toggle('hidden', tabName !== 'kendaraan');
-        elements.adminTabGedung.classList.toggle('active', tabName === 'gedung');
-        elements.adminTabKendaraan.classList.toggle('active', tabName === 'kendaraan');
+        if (elements.adminContentGedung) {
+            elements.adminContentGedung.classList.toggle('hidden', tabName !== 'gedung');
+        }
+        if (elements.adminContentKendaraan) {
+            elements.adminContentKendaraan.classList.toggle('hidden', tabName !== 'kendaraan');
+        }
+        if (elements.adminTabGedung) {
+            elements.adminTabGedung.classList.toggle('active', tabName === 'gedung');
+        }
+        if (elements.adminTabKendaraan) {
+            elements.adminTabKendaraan.classList.toggle('active', tabName === 'kendaraan');
+        }
     }
 
     function switchCalendarTab(tabName) {
         state.currentCalendarView = tabName;
         state.selectedAssetFilter = 'all';
-        elements.calendarTabGedung.classList.toggle('active', tabName === 'gedung');
-        elements.calendarTabKendaraan.classList.toggle('active', tabName === 'kendaraan');
-        ui.populateCalendarFilter(tabName, state.assets);
-        calendar.refetchEvents();
+        if (elements.calendarTabGedung) {
+            elements.calendarTabGedung.classList.toggle('active', tabName === 'gedung');
+        }
+        if (elements.calendarTabKendaraan) {
+            elements.calendarTabKendaraan.classList.toggle('active', tabName === 'kendaraan');
+        }
+        if (elements.calendarAssetFilter) {
+            ui.populateCalendarFilter(tabName, state.assets);
+        }
+        if (calendar && calendar.refetchEvents) {
+            calendar.refetchEvents();
+        }
     }
 
     function setupFormLogic(type) {
@@ -629,80 +684,150 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     async function initialize() {
-        calendar.render();
-        state.assets = await api.fetchAssets();
-        ui.renderForms();
-        if(state.assets) {
-            ui.populateDropdowns(state.assets, {});
-            ui.populateCalendarFilter('gedung', state.assets);
-            ui.populateAdminFilters('gedung', state.assets);
-            ui.populateAdminFilters('kendaraan', state.assets);
+        // Start loading assets immediately (non-blocking)
+        const assetsPromise = api.fetchAssets();
+        
+        // Initialize calendar if element exists (can run in parallel)
+        if (elements.calendarEl) {
+            calendar = initCalendar();
+            if (calendar) {
+                calendar.render();
+            }
         }
+        
+        // Wait for assets
+        state.assets = await assetsPromise;
+        
+        // Only render forms if we're on admin page
+        if (elements.formGedung && elements.formKendaraan) {
+            ui.renderForms();
+        }
+        
+        if(state.assets) {
+            if (elements.formGedung && elements.formKendaraan) {
+                ui.populateDropdowns(state.assets, {});
+            }
+            if (elements.calendarAssetFilter) {
+                ui.populateCalendarFilter('gedung', state.assets);
+            }
+            if (elements.filtersGedung && elements.filtersKendaraan) {
+                ui.populateAdminFilters('gedung', state.assets);
+                ui.populateAdminFilters('kendaraan', state.assets);
+            }
+        }
+        
+        // Load data - await to ensure UI is populated
         await refreshDataAndUI(true);
-        switchMainTab('admin');
+        
+        // Only switch tabs if we're on admin page
+        if (elements.tabAdmin && elements.tabKalender) {
+            switchMainTab('admin');
+        } else {
+            // On index page, show calendar directly
+            if (elements.contentKalender) {
+                elements.contentKalender.classList.remove('hidden');
+            }
+        }
 
         // --- EVENT LISTENERS ---
-        elements.formGedung.addEventListener('submit', (e) => handleFormSubmit(e, 'gedung'));
-        elements.formKendaraan.addEventListener('submit', (e) => handleFormSubmit(e, 'kendaraan'));
-        setupFormLogic('gedung');
-        setupFormLogic('kendaraan');
+        if (elements.formGedung) {
+            elements.formGedung.addEventListener('submit', (e) => handleFormSubmit(e, 'gedung'));
+            setupFormLogic('gedung');
+        }
+        if (elements.formKendaraan) {
+            elements.formKendaraan.addEventListener('submit', (e) => handleFormSubmit(e, 'kendaraan'));
+            setupFormLogic('kendaraan');
+        }
 
-        elements.tabKalender.addEventListener('click', () => switchMainTab('kalender'));
-        elements.tabAdmin.addEventListener('click', () => switchMainTab('admin'));
-        elements.calendarTabGedung.addEventListener('click', () => switchCalendarTab('gedung'));
-        elements.calendarTabKendaraan.addEventListener('click', () => switchCalendarTab('kendaraan'));
-        elements.adminTabGedung.addEventListener('click', () => switchAdminTab('gedung'));
-        elements.adminTabKendaraan.addEventListener('click', () => switchAdminTab('kendaraan'));
-        elements.btnAddGedung.addEventListener('click', () => {
-            elements.gedungFormTitle.innerText = "Peminjaman Gedung";
-            elements.formGedung.reset();
-            const bookingIdInput = elements.formGedung.querySelector('#gedung-booking-id');
-            if(bookingIdInput) bookingIdInput.value = '';
-            ui.populateDropdowns(state.assets, {});
-            elements.modalFormGedung.classList.remove('hidden');
-        });
-        elements.btnAddKendaraan.addEventListener('click', () => {
-            elements.kendaraanFormTitle.innerText = "Peminjaman Kendaraan";
-            elements.formKendaraan.reset();
-            const bookingIdInput = elements.formKendaraan.querySelector('#kendaraan-booking-id');
-            if(bookingIdInput) bookingIdInput.value = '';
-            ui.populateDropdowns(state.assets, {});
-            elements.modalFormKendaraan.classList.remove('hidden');
-        });
-
-        elements.allModals.forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal || e.target.classList.contains('modal-close-btn')) {
-                    modal.classList.add('hidden');
-                }
+        if (elements.tabKalender) {
+            elements.tabKalender.addEventListener('click', () => switchMainTab('kalender'));
+        }
+        if (elements.tabAdmin) {
+            elements.tabAdmin.addEventListener('click', () => switchMainTab('admin'));
+        }
+        if (elements.calendarTabGedung) {
+            elements.calendarTabGedung.addEventListener('click', () => switchCalendarTab('gedung'));
+        }
+        if (elements.calendarTabKendaraan) {
+            elements.calendarTabKendaraan.addEventListener('click', () => switchCalendarTab('kendaraan'));
+        }
+        if (elements.adminTabGedung) {
+            elements.adminTabGedung.addEventListener('click', () => switchAdminTab('gedung'));
+        }
+        if (elements.adminTabKendaraan) {
+            elements.adminTabKendaraan.addEventListener('click', () => switchAdminTab('kendaraan'));
+        }
+        if (elements.btnAddGedung) {
+            elements.btnAddGedung.addEventListener('click', () => {
+                elements.gedungFormTitle.innerText = "Peminjaman Gedung";
+                elements.formGedung.reset();
+                const bookingIdInput = elements.formGedung.querySelector('#gedung-booking-id');
+                if(bookingIdInput) bookingIdInput.value = '';
+                ui.populateDropdowns(state.assets, {});
+                elements.modalFormGedung.classList.remove('hidden');
             });
-        });
+        }
+        if (elements.btnAddKendaraan) {
+            elements.btnAddKendaraan.addEventListener('click', () => {
+                elements.kendaraanFormTitle.innerText = "Peminjaman Kendaraan";
+                elements.formKendaraan.reset();
+                const bookingIdInput = elements.formKendaraan.querySelector('#kendaraan-booking-id');
+                if(bookingIdInput) bookingIdInput.value = '';
+                ui.populateDropdowns(state.assets, {});
+                elements.modalFormKendaraan.classList.remove('hidden');
+            });
+        }
 
-        elements.contentAdmin.addEventListener('click', (e) => {
-            const row = e.target.closest('tr[data-booking-id]');
-            if (e.target.classList.contains('btn-edit')) {
-                e.stopPropagation();
-                handleEditClick(e.target.dataset.id);
-            } else if (e.target.classList.contains('btn-delete')) {
-                e.stopPropagation();
-                handleDeleteClick(e.target.dataset.id);
-            } else if (row) {
-                const bookingData = state.allBookingsCache.find(b => b._id === row.dataset.bookingId);
-                if (bookingData) ui.showDetailModal(bookingData, 'admin');
+        elements.allModals = elements.allModals.filter(m => m !== null);
+        elements.allModals.forEach(modal => {
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal || e.target.classList.contains('modal-close-btn')) {
+                        modal.classList.add('hidden');
+                    }
+                });
             }
         });
 
-        elements.calendarAssetFilter.addEventListener('change', (e) => {
-            state.selectedAssetFilter = e.target.value;
-            calendar.refetchEvents();
-        });
+        if (elements.contentAdmin) {
+            elements.contentAdmin.addEventListener('click', (e) => {
+                const row = e.target.closest('tr[data-booking-id]');
+                if (e.target.classList.contains('btn-edit')) {
+                    e.stopPropagation();
+                    handleEditClick(e.target.dataset.id);
+                } else if (e.target.classList.contains('btn-delete')) {
+                    e.stopPropagation();
+                    handleDeleteClick(e.target.dataset.id);
+                } else if (row) {
+                    const bookingData = state.allBookingsCache.find(b => b._id === row.dataset.bookingId);
+                    if (bookingData) ui.showDetailModal(bookingData, 'admin');
+                }
+            });
+        }
 
-        elements.filtersGedung.addEventListener('input', () => applyAdminFilters('gedung'));
-        elements.filtersKendaraan.addEventListener('input', () => applyAdminFilters('kendaraan'));
-        
-        // Add keyup events for search inputs to catch paste operations and other edge cases
-        document.getElementById('filter-gedung-search').addEventListener('keyup', () => applyAdminFilters('gedung'));
-        document.getElementById('filter-kendaraan-search').addEventListener('keyup', () => applyAdminFilters('kendaraan'));
+        if (elements.calendarAssetFilter) {
+            elements.calendarAssetFilter.addEventListener('change', (e) => {
+                state.selectedAssetFilter = e.target.value;
+                if (calendar && calendar.refetchEvents) {
+                    calendar.refetchEvents();
+                }
+            });
+        }
+
+        if (elements.filtersGedung) {
+            elements.filtersGedung.addEventListener('input', () => applyAdminFilters('gedung'));
+            const searchInput = document.getElementById('filter-gedung-search');
+            if (searchInput) {
+                searchInput.addEventListener('keyup', () => applyAdminFilters('gedung'));
+            }
+        }
+        if (elements.filtersKendaraan) {
+            elements.filtersKendaraan.addEventListener('input', () => applyAdminFilters('kendaraan'));
+            const searchInput = document.getElementById('filter-kendaraan-search');
+            if (searchInput) {
+                searchInput.addEventListener('keyup', () => applyAdminFilters('kendaraan'));
+            }
+        }
     }
 
     initialize();
@@ -735,7 +860,6 @@ document.addEventListener('DOMContentLoaded', function() {
             header.parentNode.replaceChild(newHeader, header);
             
             newHeader.addEventListener('click', function() {
-                console.log('Header clicked:', this.getAttribute('data-sort')); // Debug log
                 const sortKey = this.getAttribute('data-sort');
                 const tableId = this.closest('table').querySelector('tbody').id;
                 
@@ -821,6 +945,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     valueA = rowA.cells[4].textContent.trim().toLowerCase();
                     valueB = rowB.cells[4].textContent.trim().toLowerCase();
                     break;
+                case 'created':
+                    // For gedung table, created is at index 4; for kendaraan, it's at index 5
+                    const createdIndex = tableId === 'gedung-list-table' ? 4 : 5;
+                    const dateA = rowA.cells[createdIndex].textContent.trim();
+                    const dateB = rowB.cells[createdIndex].textContent.trim();
+                    valueA = parseIndonesianDate(dateA);
+                    valueB = parseIndonesianDate(dateB);
+                    break;
                 default:
                     valueA = '';
                     valueB = '';
@@ -902,4 +1034,22 @@ document.addEventListener('DOMContentLoaded', function() {
             return dateStr;
         }
     }
-});
+}
+
+// Run initialization when ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    // DOM already loaded - check if we're on admin page (has content-admin) or index page (with partials)
+    const isAdminPage = document.getElementById('content-admin') !== null;
+    
+    if (isAdminPage) {
+        // Admin page - all elements already in DOM, initialize immediately
+        setTimeout(initializeApp, 10);
+    } else {
+        // Index page - wait for partials to load
+        window.addEventListener('partialsLoaded', initializeApp, { once: true });
+        // Fallback: run after delay if event doesn't fire
+        setTimeout(initializeApp, 500);
+    }
+}
