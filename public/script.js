@@ -2,7 +2,6 @@ function initializeApp() {
     // --- STATE APLIKASI ---
     const state = {
         assets: {},
-        currentCalendarView: 'gedung',
         allBookingsCache: [],
         selectedAssetFilter: 'all',
     };
@@ -13,19 +12,13 @@ function initializeApp() {
 
     // --- ELEMEN UI ---
     const elements = {
-        tabKalender: document.getElementById('tab-kalender'),
-        tabAdmin: document.getElementById('tab-admin'),
-        tabMaster: document.getElementById('tab-master'),
-        calendarEl: document.getElementById('calendar'),
-        contentKalender: document.getElementById('content-kalender'),
         contentAdmin: document.getElementById('content-admin'),
-        contentMaster: document.getElementById('content-master'),
-        calendarTabGedung: document.getElementById('calendar-tab-gedung'),
-        calendarTabKendaraan: document.getElementById('calendar-tab-kendaraan'),
         adminTabGedung: document.getElementById('admin-tab-gedung'),
         adminTabKendaraan: document.getElementById('admin-tab-kendaraan'),
+        adminTabMaster: document.getElementById('admin-tab-master'),
         adminContentGedung: document.getElementById('admin-content-gedung'),
         adminContentKendaraan: document.getElementById('admin-content-kendaraan'),
+        adminContentMaster: document.getElementById('admin-content-master'),
         btnSearchBooking: document.getElementById('btn-search-booking'),
         btnAddGedung: document.getElementById('btn-add-gedung'),
         btnAddKendaraan: document.getElementById('btn-add-kendaraan'),
@@ -44,7 +37,6 @@ function initializeApp() {
         masterSearch: document.getElementById('master-search'),
         filtersGedung: document.getElementById('filters-gedung'),
         filtersKendaraan: document.getElementById('filters-kendaraan'),
-        calendarAssetFilter: document.getElementById('calendar-asset-filter'),
         modalTitle: document.getElementById('modal-title'),
         modalBody: document.getElementById('modal-body'),
         gedungFormTitle: document.getElementById('gedung-form-title'),
@@ -253,12 +245,6 @@ function initializeApp() {
             });
             if (current) select.value = current;
         },
-        populateCalendarFilter: function(type, assets) {
-            const select = elements.calendarAssetFilter;
-            select.innerHTML = `<option value="all">Semua ${type.charAt(0).toUpperCase() + type.slice(1)}</option>`;
-            const items = assets[type];
-            items.forEach(item => select.add(new Option(item.nama, item.kode)));
-        },
         populateAdminFilters: function(type, assets) {
             const assetSelect = elements.filtersGedung?.querySelector('#filter-gedung-asset');
             const barangSelect = elements.filtersGedung?.querySelector('#filter-gedung-barang');
@@ -338,17 +324,6 @@ function initializeApp() {
             elements.modalBody.innerHTML = detailsHtml;
             elements.modalDetailEvent.classList.remove('hidden');
         },
-        formatBookingForCalendar: (booking) => ({
-            id: booking._id,
-            title: booking.assetName,
-            start: booking.startDate,
-            end: booking.endDate,
-            extendedProps: booking,
-            textColor: '#047857',
-            backgroundColor: 'rgba(184, 147, 47, 0.3)',
-        }),
-        // Format tanggal + jam untuk modal (tanpa nama hari)
-        // Contoh: "22 Des 2025, 07.00-16.00 WIB" atau "22 Des 2025, 07.00 WIB - 23 Des 2025, 16.00 WIB"
         formatDateShort: (d) => {
             const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
             const day = String(d.getDate()).padStart(2, '0');
@@ -489,62 +464,12 @@ function initializeApp() {
         if (elements.formGedung && elements.formKendaraan) {
             ui.populateDropdowns(state.assets, {});
         }
-        if (elements.calendarAssetFilter) {
-            ui.populateCalendarFilter(state.currentCalendarView, state.assets);
-        }
         if (elements.filtersGedung && elements.filtersKendaraan) {
             ui.populateAdminFilters('gedung', state.assets);
             ui.populateAdminFilters('kendaraan', state.assets);
         }
 
         renderMasterTable();
-    }
-
-    // --- INISIALISASI KALENDER ---
-    let calendar = null;
-    
-    function initCalendar() {
-        if (!elements.calendarEl) {
-            console.warn('Calendar element not found, calendar will not be initialized');
-            return null;
-        }
-        
-        return new FullCalendar.Calendar(elements.calendarEl, {
-            initialView: window.innerWidth < 768 ? 'listWeek' : 'dayGridMonth',
-            locale: 'id', 
-            dayMaxEvents: true,
-            headerToolbar: { 
-                left: 'prev,next,today', 
-                center: 'title', 
-                right: 'dayGridMonth,timeGridDay,listWeek' 
-            },
-            views: {
-                dayGridMonth: {
-                    titleFormat: { year: 'numeric', month: 'long' }
-                },
-                listWeek: {
-                    titleFormat: { day: '2-digit', month: 'long', year: 'numeric' }
-                }
-            },
-            buttonText: {
-                today: 'today',
-                month: 'month',
-                day: 'day',
-                list: 'list'
-            },
-            height: 'auto',
-            events: (fetchInfo, successCallback) => {
-                let filtered = state.allBookingsCache.filter(b => b.bookingType === state.currentCalendarView);
-                if (state.selectedAssetFilter !== 'all') {
-                    filtered = filtered.filter(b => b.assetCode === state.selectedAssetFilter);
-                }
-                successCallback(filtered.map(ui.formatBookingForCalendar));
-            },
-            eventClick: (info) => ui.showDetailModal(info.event.extendedProps, 'public'),
-            eventContent: (arg) => ({ 
-                html: `<div class="p-1"><b>${arg.event.extendedProps.bookingType === 'gedung' ? '🏢' : '🚗'} ${arg.event.title}</b></div>` 
-            })
-        });
     }
 
     // --- FUNGSI UTAMA ---
@@ -698,9 +623,6 @@ function initializeApp() {
 
     async function refreshDataAndUI(force = false) {
         state.allBookingsCache = await api.fetchAllBookings();
-        if (calendar && calendar.refetchEvents) {
-            calendar.refetchEvents();
-        }
         if (elements.filtersGedung) {
             applyAdminFilters('gedung');
         }
@@ -885,12 +807,10 @@ function initializeApp() {
             form.reset();
             if (type === 'gedung') {
                 elements.modalFormGedung.classList.add('hidden');
-                switchMainTab('admin');
-                switchAdminTab('gedung');
+                switchMainTab('gedung');
             } else {
                 elements.modalFormKendaraan.classList.add('hidden');
-                switchMainTab('admin');
-                switchAdminTab('kendaraan');
+                switchMainTab('kendaraan');
             }
             await refreshDataAndUI(true);
         } catch (error) {
@@ -976,41 +896,8 @@ function initializeApp() {
     }
 
     function switchMainTab(tabName) {
-        if (elements.contentKalender) {
-            elements.contentKalender.classList.toggle('hidden', tabName !== 'kalender');
-        }
         if (elements.contentAdmin) {
             elements.contentAdmin.classList.toggle('hidden', tabName !== 'admin');
-        }
-        if (elements.contentMaster) {
-            elements.contentMaster.classList.toggle('hidden', tabName !== 'master');
-        }
-        if (elements.tabKalender) {
-            elements.tabKalender.classList.toggle('active', tabName === 'kalender');
-        }
-        if (elements.tabAdmin) {
-            elements.tabAdmin.classList.toggle('active', tabName === 'admin');
-        }
-        if (elements.tabMaster) {
-            elements.tabMaster.classList.toggle('active', tabName === 'master');
-        }
-        if (tabName === 'admin') {
-            if (elements.filtersGedung) applyAdminFilters('gedung');
-            if (elements.filtersKendaraan) applyAdminFilters('kendaraan');
-            if (elements.adminTabGedung) switchAdminTab('gedung');
-        } else if (tabName === 'master') {
-            renderMasterTable();
-        } else if (tabName === 'kalender' && calendar && calendar.updateSize) {
-            setTimeout(() => calendar.updateSize(), 1);
-        }
-    }
-
-    function switchAdminTab(tabName) {
-        if (elements.adminContentGedung) {
-            elements.adminContentGedung.classList.toggle('hidden', tabName !== 'gedung');
-        }
-        if (elements.adminContentKendaraan) {
-            elements.adminContentKendaraan.classList.toggle('hidden', tabName !== 'kendaraan');
         }
         if (elements.adminTabGedung) {
             elements.adminTabGedung.classList.toggle('active', tabName === 'gedung');
@@ -1018,22 +905,24 @@ function initializeApp() {
         if (elements.adminTabKendaraan) {
             elements.adminTabKendaraan.classList.toggle('active', tabName === 'kendaraan');
         }
-    }
-
-    function switchCalendarTab(tabName) {
-        state.currentCalendarView = tabName;
-        state.selectedAssetFilter = 'all';
-        if (elements.calendarTabGedung) {
-            elements.calendarTabGedung.classList.toggle('active', tabName === 'gedung');
+        if (elements.adminTabMaster) {
+            elements.adminTabMaster.classList.toggle('active', tabName === 'master');
         }
-        if (elements.calendarTabKendaraan) {
-            elements.calendarTabKendaraan.classList.toggle('active', tabName === 'kendaraan');
-        }
-        if (elements.calendarAssetFilter) {
-            ui.populateCalendarFilter(tabName, state.assets);
-        }
-        if (calendar && calendar.refetchEvents) {
-            calendar.refetchEvents();
+        if (tabName === 'gedung') {
+            if (elements.adminContentGedung) elements.adminContentGedung.classList.remove('hidden');
+            if (elements.adminContentKendaraan) elements.adminContentKendaraan.classList.add('hidden');
+            if (elements.adminContentMaster) elements.adminContentMaster.classList.add('hidden');
+            if (elements.filtersGedung) applyAdminFilters('gedung');
+        } else if (tabName === 'kendaraan') {
+            if (elements.adminContentGedung) elements.adminContentGedung.classList.add('hidden');
+            if (elements.adminContentKendaraan) elements.adminContentKendaraan.classList.remove('hidden');
+            if (elements.adminContentMaster) elements.adminContentMaster.classList.add('hidden');
+            if (elements.filtersKendaraan) applyAdminFilters('kendaraan');
+        } else if (tabName === 'master') {
+            if (elements.adminContentGedung) elements.adminContentGedung.classList.add('hidden');
+            if (elements.adminContentKendaraan) elements.adminContentKendaraan.classList.add('hidden');
+            if (elements.adminContentMaster) elements.adminContentMaster.classList.remove('hidden');
+            renderMasterTable();
         }
     }
 
@@ -1144,13 +1033,6 @@ function initializeApp() {
     async function initialize() {
         const assetsPromise = api.fetchAssets();
         
-        if (elements.calendarEl) {
-            calendar = initCalendar();
-            if (calendar) {
-                calendar.render();
-            }
-        }
-        
         if (elements.formGedung && elements.formKendaraan) {
             ui.renderForms();
         }
@@ -1160,12 +1042,8 @@ function initializeApp() {
         setDefaultMonthFilters();
         await refreshDataAndUI(true);
         
-        if (elements.tabAdmin && elements.tabKalender) {
-            switchMainTab('admin');
-        } else {
-            if (elements.contentKalender) {
-                elements.contentKalender.classList.remove('hidden');
-            }
+        if (elements.contentAdmin) {
+            switchMainTab('gedung');
         }
 
         // --- EVENT LISTENERS ---
@@ -1176,16 +1054,6 @@ function initializeApp() {
         if (elements.formKendaraan) {
             elements.formKendaraan.addEventListener('submit', (e) => handleFormSubmit(e, 'kendaraan'));
             setupFormLogic('kendaraan');
-        }
-
-        if (elements.tabKalender) {
-            elements.tabKalender.addEventListener('click', () => switchMainTab('kalender'));
-        }
-        if (elements.tabAdmin) {
-            elements.tabAdmin.addEventListener('click', () => switchMainTab('admin'));
-        }
-        if (elements.tabMaster) {
-            elements.tabMaster.addEventListener('click', () => switchMainTab('master'));
         }
 
         if (elements.btnSearchBooking) {
@@ -1200,17 +1068,14 @@ function initializeApp() {
                 }
             });
         }
-        if (elements.calendarTabGedung) {
-            elements.calendarTabGedung.addEventListener('click', () => switchCalendarTab('gedung'));
-        }
-        if (elements.calendarTabKendaraan) {
-            elements.calendarTabKendaraan.addEventListener('click', () => switchCalendarTab('kendaraan'));
-        }
         if (elements.adminTabGedung) {
-            elements.adminTabGedung.addEventListener('click', () => switchAdminTab('gedung'));
+            elements.adminTabGedung.addEventListener('click', () => switchMainTab('gedung'));
         }
         if (elements.adminTabKendaraan) {
-            elements.adminTabKendaraan.addEventListener('click', () => switchAdminTab('kendaraan'));
+            elements.adminTabKendaraan.addEventListener('click', () => switchMainTab('kendaraan'));
+        }
+        if (elements.adminTabMaster) {
+            elements.adminTabMaster.addEventListener('click', () => switchMainTab('master'));
         }
         if (elements.btnAddGedung) {
             elements.btnAddGedung.addEventListener('click', () => {
@@ -1289,15 +1154,6 @@ function initializeApp() {
                 } else if (row) {
                     const bookingData = state.allBookingsCache.find(b => b._id === row.dataset.bookingId);
                     if (bookingData) ui.showDetailModal(bookingData, 'admin');
-                }
-            });
-        }
-
-        if (elements.calendarAssetFilter) {
-            elements.calendarAssetFilter.addEventListener('change', (e) => {
-                state.selectedAssetFilter = e.target.value;
-                if (calendar && calendar.refetchEvents) {
-                    calendar.refetchEvents();
                 }
             });
         }
