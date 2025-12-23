@@ -192,8 +192,51 @@ function initializeApp() {
                 <textarea id="kendaraan-keterangan" rows="2" class="form-input"></textarea></div>
                 <button type="submit" class="w-full add-btn">Simpan Peminjaman</button>
             `;
-            elements.formGedung.innerHTML = commonFormHtml('gedung') + gedungExtraFields;
-            elements.formKendaraan.innerHTML = commonFormHtml('kendaraan') + kendaraanExtraFields;
+            if (elements.formGedung) {
+                elements.formGedung.innerHTML = commonFormHtml('gedung') + gedungExtraFields;
+            }
+            if (elements.formKendaraan) {
+                elements.formKendaraan.innerHTML = commonFormHtml('kendaraan') + kendaraanExtraFields;
+            }
+            if (elements.formAsset) {
+                elements.formAsset.innerHTML = `
+                    <input type="hidden" id="asset-id">
+                    <div>
+                        <label for="asset-kode" class="form-label text-sm">Kode</label>
+                        <input id="asset-kode" type="text" required class="form-input" placeholder="Misal: G-01">
+                    </div>
+                    <div>
+                        <label for="asset-nama" class="form-label text-sm">Nama</label>
+                        <input id="asset-nama" type="text" required class="form-input" placeholder="Nama aset">
+                    </div>
+                    <div>
+                        <label for="asset-tipe" class="form-label text-sm">Tipe</label>
+                        <select id="asset-tipe" required class="form-input">
+                            <option value="gedung">Gedung</option>
+                            <option value="kendaraan">Kendaraan</option>
+                            <option value="supir">Supir</option>
+                            <option value="barang">Barang</option>
+                        </select>
+                    </div>
+                    <div id="asset-num-wrapper" class="hidden">
+                        <label for="asset-num" class="form-label text-sm">Qty / Max</label>
+                        <input id="asset-num" type="number" min="0" step="1" class="form-input" placeholder="Masukkan angka">
+                    </div>
+                    <div>
+                        <label for="asset-detail" class="form-label text-sm">Detail (Opsional)</label>
+                        <input id="asset-detail" type="text" class="form-input" placeholder="Kapasitas / keterangan lain">
+                    </div>
+                    <button type="submit" class="w-full add-btn">Simpan Aset</button>
+                `;
+                elements.assetIdInput = elements.formAsset.querySelector('#asset-id');
+                elements.assetKodeInput = elements.formAsset.querySelector('#asset-kode');
+                elements.assetNamaInput = elements.formAsset.querySelector('#asset-nama');
+                elements.assetTipeInput = elements.formAsset.querySelector('#asset-tipe');
+                elements.assetDetailInput = elements.formAsset.querySelector('#asset-detail');
+                elements.assetNumInput = elements.formAsset.querySelector('#asset-num');
+                elements.assetNumWrapper = elements.formAsset.querySelector('#asset-num-wrapper');
+                setAssetNumVisibility(elements.assetTipeInput ? elements.assetTipeInput.value : 'gedung');
+            }
         },
         formatBorrowedItemsForDisplay: function(borrowedItems) {
             if (!borrowedItems) return '-';
@@ -402,6 +445,9 @@ function initializeApp() {
 
     function openAssetModal(asset = null) {
         if (!elements.formAsset || !elements.modalAsset) return;
+        if (!elements.assetKodeInput || !elements.assetNamaInput || !elements.assetTipeInput) {
+            ui.renderForms();
+        }
         elements.formAsset.reset();
         elements.assetIdInput.value = asset?._id || '';
         elements.assetKodeInput.value = asset?.kode || '';
@@ -485,7 +531,6 @@ function initializeApp() {
         
         let start, end;
         if (useTime) {
-            // Jika gedung dan jam tidak diisi, gunakan default 07:00-16:00 tanpa peringatan
             if (type === 'gedung' && startDateInput.value && endDateInput.value && (!startTimeInput.value || !endTimeInput.value)) {
                 start = new Date(`${startDateInput.value}T${GEDUNG_START}`);
                 end = new Date(`${endDateInput.value}T${GEDUNG_END}`);
@@ -591,7 +636,6 @@ function initializeApp() {
             return;
         }
         const availability = computeBarangAvailability(start, end, bookingId);
-        // kurangi dengan pilihan saat ini agar tampilan stok mencerminkan sisa yang belum ditambahkan
         const items = form.__barangItems ? [...form.__barangItems.values()] : [];
         items.forEach(it => {
             const cur = availability.get(it.assetCode) ?? 0;
@@ -676,7 +720,6 @@ function initializeApp() {
         return bookings.filter(b => {
             if (b.bookingType !== filters.type) return false;
             
-            // Filter by month (format: YYYY-MM)
             if (filters.month) {
                 const bookingDate = new Date(b.startDate);
                 const bookingYear = bookingDate.getFullYear();
@@ -735,7 +778,6 @@ function initializeApp() {
         let startDate, endDate;
 
         if (useTime) {
-            // Jika gedung dan jam tidak diisi, fallback ke default tanpa peringatan
             const minT = GEDUNG_START;
             const maxT = GEDUNG_END;
             if (type === 'gedung' && (!startTimeInput.value || !endTimeInput.value)) {
@@ -753,7 +795,6 @@ function initializeApp() {
                 endDate = new Date(`${endDateInput.value}T${endTimeInput.value}`);
             }
         } else {
-            // Non spesifik jam: gedung otomatis 07:00 - 16:00
             const sDateStr = `${startDateInput.value}T${type === 'gedung' ? GEDUNG_START : '00:00'}`;
             const eDateStr = `${endDateInput.value}T${type === 'gedung' ? GEDUNG_END : '23:59'}`;
             startDate = new Date(sDateStr);
@@ -953,7 +994,6 @@ function initializeApp() {
         const timeInputs = timeInputsDiv.querySelectorAll('input');
         timeInputs.forEach(input => input.addEventListener('change', () => updateAvailableAssets(type)));
 
-        // Batasi jam input untuk gedung
         if (type === 'gedung') {
             if (startTimeInput) {
                 startTimeInput.min = GEDUNG_START;
@@ -974,14 +1014,11 @@ function initializeApp() {
         }
 
         if (type === 'gedung') {
-            // init barang chips state
             resetBarangChips(form);
             const addBtn = form.querySelector('#gedung-barang-add');
             const qtyInput = form.querySelector('#gedung-barang-qty');
             const select = form.querySelector('#gedung-barang-select');
-            // update max on selection change
             select.addEventListener('change', () => setBarangQtyMax(form, form.__barangAvailability || null));
-            // also adjust when typing beyond max
             qtyInput.addEventListener('input', () => setBarangQtyMax(form, form.__barangAvailability || null));
             addBtn.addEventListener('click', () => {
                 const code = select.value;
@@ -994,7 +1031,6 @@ function initializeApp() {
                 if (qty > available) return alert(`Qty melebihi stok tersedia (${available}).`);
                 addBarangItemToForm(form, asset.kode, asset.nama, qty);
                 qtyInput.value = '';
-                // refresh availability and max after adding
                 updateBarangAvailability();
             });
         }
@@ -1009,7 +1045,6 @@ function initializeApp() {
 
     function addBarangItemToForm(form, assetCode, assetName, quantity) {
         if (!form.__barangItems) form.__barangItems = new Map();
-        // replace existing
         form.__barangItems.set(assetCode, { assetCode, assetName, quantity });
         const chips = form.querySelector('#gedung-barang-chips');
         const chip = document.createElement('span');
@@ -1019,7 +1054,6 @@ function initializeApp() {
             <span class="mr-1 font-semibold">${assetName}: ${quantity}</span>
             <button type="button" class="ml-1 text-emerald-800 hover:text-red-600" title="Hapus">&times;</button>
         `;
-        // remove existing chip for same code
         chips.querySelectorAll('span[data-code]')
             .forEach(n => { if (n.dataset.code === assetCode) n.remove(); });
         chips.appendChild(chip);
@@ -1033,7 +1067,7 @@ function initializeApp() {
     async function initialize() {
         const assetsPromise = api.fetchAssets();
         
-        if (elements.formGedung && elements.formKendaraan) {
+        if (elements.formGedung || elements.formKendaraan || elements.formAsset) {
             ui.renderForms();
         }
         const initialAssets = await assetsPromise;
@@ -1183,7 +1217,12 @@ function initializeApp() {
             e.stopPropagation();
             const modal = btn.closest('.modal-content');
             const form = modal.querySelector('form');
-            if(form) form.reset();
+            if(form) {
+                form.reset();
+                if (form.id === 'form-asset' && elements.assetTipeInput) {
+                    setAssetNumVisibility(elements.assetTipeInput.value);
+                }
+            }
         });
     });
 
@@ -1262,7 +1301,6 @@ function initializeApp() {
                 case 'tanggal':
                     const textA = rowA.cells[2].textContent.trim();
                     const textB = rowB.cells[2].textContent.trim();
-                    
                     valueA = parseIndonesianDate(textA);
                     valueB = parseIndonesianDate(textB);
                     break;
