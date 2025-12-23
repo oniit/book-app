@@ -26,6 +26,7 @@ function initializeApp() {
         adminTabKendaraan: document.getElementById('admin-tab-kendaraan'),
         adminContentGedung: document.getElementById('admin-content-gedung'),
         adminContentKendaraan: document.getElementById('admin-content-kendaraan'),
+        btnSearchBooking: document.getElementById('btn-search-booking'),
         btnAddGedung: document.getElementById('btn-add-gedung'),
         btnAddKendaraan: document.getElementById('btn-add-kendaraan'),
         btnAddAsset: document.getElementById('btn-add-asset'),
@@ -78,6 +79,7 @@ function initializeApp() {
         },
         fetchAssets: () => api.fetch('/api/assets', { cache: 'no-store' }),
         fetchAllBookings: () => api.fetch('/api/bookings'),
+        fetchBookingByCode: (code) => api.fetch(`/api/bookings/by-code/${code}`),
         saveBooking: (data, id) => {
             const url = id ? `/api/bookings/${id}` : '/api/bookings';
             const method = id ? 'PUT' : 'POST';
@@ -292,19 +294,47 @@ function initializeApp() {
             elements.modalTitle.innerText = `${assetDisplay}`;
             const start = new Date(props.startDate);
             const end = new Date(props.endDate);
-            const isFullDay = start.getHours() === 0 && start.getMinutes() === 0 && end.getHours() === 23 && end.getMinutes() === 59;
             const waktuText = formatRangeForModal(start, end);
-            let detailsHtml = `<p><strong>Peminjam:</strong> ${props.userName}</p><p><strong>Waktu:</strong> ${waktuText}</p>`;
-            if (context === 'admin') {
-                detailsHtml += `<p><strong>Penanggung Jawab:</strong> ${props.personInCharge} (${props.picPhoneNumber})</p>`;
-                if (props.bookingType === 'gedung') {
-                    const barangText = ui.formatBorrowedItemsForDisplay(props.borrowedItems);
-                    detailsHtml += `${props.activityName ? `<p><strong>Kegiatan:</strong> ${props.activityName}</p>` : ''}${barangText !== '-' ? `<p><strong>Barang Pinjam:</strong> ${barangText}</p>` : ''}`;
-                } else {
-                    detailsHtml += `${props.driverName ? `<p><strong>Supir:</strong> ${props.driverName}</p>` : ''}${props.destination ? `<p><strong>Tujuan:</strong> ${props.destination}</p>` : ''}`;
-                }
-                detailsHtml += `${props.notes ? `<p><strong>Keterangan:</strong> ${props.notes}</p>` : ''}`;
+            
+            let detailsHtml = `<p>${waktuText}</p>`;
+            
+            if (props.bookingId) {
+                detailsHtml += `<p><strong>Booking ID:</strong> <code class="bg-gray-100 px-2 py-1 rounded text-sm">${props.bookingId}</code></p>`;
             }
+            
+            detailsHtml += `<p><strong>Peminjam:</strong> ${props.userName}</p>`;
+            
+            if (context === 'admin') {
+                if (props.personInCharge) {
+                    detailsHtml += `<p><strong>Penanggung Jawab:</strong> ${props.personInCharge}</p>`;
+                }
+                if (props.picPhoneNumber) {
+                    detailsHtml += `<p><strong>No. Telepon:</strong> ${props.picPhoneNumber}</p>`;
+                }
+                if (props.bookingType === 'gedung') {
+                    if (props.activityName) {
+                        detailsHtml += `<p><strong>Kegiatan:</strong> ${props.activityName}</p>`;
+                    }
+                    if (props.borrowedItems && props.borrowedItems.length > 0) {
+                        detailsHtml += `<p><strong>Barang Dipinjam:</strong></p><ul class="ml-4 list-disc">`;
+                        props.borrowedItems.forEach(item => {
+                            detailsHtml += `<li>${item.assetName} (${item.assetCode}) - ${item.quantity} unit</li>`;
+                        });
+                        detailsHtml += `</ul>`;
+                    }
+                } else if (props.bookingType === 'kendaraan') {
+                    if (props.destination) {
+                        detailsHtml += `<p><strong>Tujuan:</strong> ${props.destination}</p>`;
+                    }
+                    if (props.driverName && props.driverName !== 'Tanpa Supir') {
+                        detailsHtml += `<p><strong>Supir:</strong> ${props.driverName}</p>`;
+                    }
+                }
+                if (props.notes) {
+                    detailsHtml += `<p><strong>Keterangan:</strong> ${props.notes}</p>`;
+                }
+            }
+            
             elements.modalBody.innerHTML = detailsHtml;
             elements.modalDetailEvent.classList.remove('hidden');
         },
@@ -1156,6 +1186,19 @@ function initializeApp() {
         }
         if (elements.tabMaster) {
             elements.tabMaster.addEventListener('click', () => switchMainTab('master'));
+        }
+
+        if (elements.btnSearchBooking) {
+            elements.btnSearchBooking.addEventListener('click', async () => {
+                const code = prompt('Masukkan Booking ID');
+                if (!code) return;
+                try {
+                    const data = await api.fetchBookingByCode(code.trim());
+                    ui.showDetailModal(data, 'admin');
+                } catch (err) {
+                    alert(err.message || 'Booking tidak ditemukan');
+                }
+            });
         }
         if (elements.calendarTabGedung) {
             elements.calendarTabGedung.addEventListener('click', () => switchCalendarTab('gedung'));

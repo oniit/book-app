@@ -10,6 +10,17 @@ const getAllBookings = async (req, res) => {
     }
 };
 
+const getBookingByCode = async (req, res) => {
+    try {
+        const { code } = req.params;
+        const booking = await Booking.findOne({ bookingId: code });
+        if (!booking) return res.status(404).json({ message: 'Booking tidak ditemukan.' });
+        res.json(booking);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
 const checkConflict = async (bookingData, id = null) => {
     const { startDate, endDate, assetCode, driverName, bookingType } = bookingData;
 
@@ -199,6 +210,7 @@ const deleteBooking = async (req, res) => {
 
 module.exports = {
     getAllBookings,
+    getBookingByCode,
     createBooking,
     updateBooking,
     deleteBooking,

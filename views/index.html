@@ -46,22 +46,23 @@
                         <button id="admin-tab-gedung" class="tab-btn active">Gedung</button>
                         <button id="admin-tab-kendaraan" class="tab-btn">Kendaraan</button>
                     </div>
-
+                    
                     <div id="admin-content-gedung">
                         <div id="filters-gedung" class="filter-panel grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 items-center mb-4">
-                            <div class="col-span-1">
-                                <input type="month" id="filter-gedung-month" class="filter-menu w-full">
-                            </div>
                             <div class="col-span-2 sm:col-span-1">
                                 <select id="filter-gedung-asset" class="filter-menu w-full"></select>
                             </div>
                             <div class="col-span-2 sm:col-span-1">
                                 <select id="filter-gedung-barang" class="filter-menu w-full"></select>
                             </div>
+                            <div class="col-span-1">
+                                <input type="month" id="filter-gedung-month" class="filter-menu w-full">
+                            </div>
                             <div class="col-span-2 sm:col-span-2 lg:col-span-2 flex">
                                 <input type="text" id="filter-gedung-search" placeholder="Cari..." class="filter-menu flex-grow">
                             </div>
                             <div class="col-span-1 lg:col-span-1 flex justify-end">
+                                <button id="btn-search-booking" class="add-btn mr-2 px-3 py-2 text-sm"><i class="fas fa-search"></i></button>
                                 <button id="btn-add-gedung" class="add-btn px-2 sm:px-3 py-2 text-sm whitespace-nowrap">+ Tambah</button>
                             </div>
                         </div>
@@ -98,18 +99,19 @@
                     <div id="admin-content-kendaraan" class="hidden">
                         <div id="filters-kendaraan" class="filter-panel grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 items-center mb-4">
                             <div class="col-span-1">
-                                <input type="month" id="filter-kendaraan-month" class="filter-menu w-full">
-                            </div>
-                            <div class="col-span-1">
                                 <select id="filter-kendaraan-asset" class="filter-menu w-full"></select>
                             </div>
                             <div class="col-span-1">
                                 <select id="filter-kendaraan-driver" class="filter-menu w-full"></select>
                             </div>
+                            <div class="col-span-1">
+                                <input type="month" id="filter-kendaraan-month" class="filter-menu w-full">
+                            </div>
                             <div class="col-span-1 sm:col-span-2 lg:col-span-2 flex">
                                 <input type="text" id="filter-kendaraan-search" placeholder="Cari..." class="filter-menu w-full">
                             </div>
                             <div class="col-span-1 flex justify-end">
+                                <button id="btn-search-booking" class="add-btn mr-2 px-3 py-2 text-sm"><i class="fas fa-search"></i></button>
                                 <button id="btn-add-kendaraan" class="add-btn px-2 sm:px-3 py-2 text-sm whitespace-nowrap">+ Tambah</button>
                             </div>
                         </div>
